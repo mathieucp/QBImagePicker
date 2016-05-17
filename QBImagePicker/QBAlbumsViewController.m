@@ -189,7 +189,31 @@ static CGSize CGSizeScale(CGSize size, CGFloat scale) {
         [assetCollections addObject:assetCollection];
     }];
     
-    self.assetCollections = assetCollections;
+    // Show album which have photo only
+    PHFetchOptions *options = [PHFetchOptions new];
+    
+    switch (self.imagePickerController.mediaType) {
+        case QBImagePickerMediaTypeImage:
+            options.predicate = [NSPredicate predicateWithFormat:@"mediaType == %ld", PHAssetMediaTypeImage];
+            break;
+            
+        case QBImagePickerMediaTypeVideo:
+            options.predicate = [NSPredicate predicateWithFormat:@"mediaType == %ld", PHAssetMediaTypeVideo];
+            break;
+            
+        default:
+            break;
+    }
+    
+    NSMutableArray *filterAssetCollections = [[NSMutableArray alloc] init];
+    for (PHAssetCollection *collection in assetCollections) {
+        PHFetchResult *fetchResult = [PHAsset fetchAssetsInAssetCollection:collection options:options];
+        if (fetchResult.count > 0) {
+            [filterAssetCollections addObject:collection];
+        }
+    }
+    
+    self.assetCollections = filterAssetCollections;
 }
 
 - (UIImage *)placeholderImageWithSize:(CGSize)size
