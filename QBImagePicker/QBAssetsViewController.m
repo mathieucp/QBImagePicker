@@ -77,6 +77,9 @@ static CGSize CGSizeScale(CGSize size, CGFloat scale) {
     [self setUpToolbarItems];
     [self resetCachedAssets];
     
+    //Show toolbar
+    [self.navigationController setToolbarHidden:NO animated:NO];
+    
     // Register observer
     [[PHPhotoLibrary sharedPhotoLibrary] registerChangeObserver:self];
 }
@@ -100,7 +103,7 @@ static CGSize CGSizeScale(CGSize size, CGFloat scale) {
     }
     
     [self updateDoneButtonState];
-    [self updateSelectionInfo];
+//    [self updateSelectionInfo];
     [self.collectionView reloadData];
     
     // Scroll to bottom
@@ -108,6 +111,11 @@ static CGSize CGSizeScale(CGSize size, CGFloat scale) {
         NSIndexPath *indexPath = [NSIndexPath indexPathForItem:(self.fetchResult.count - 1) inSection:0];
         [self.collectionView scrollToItemAtIndexPath:indexPath atScrollPosition:UICollectionViewScrollPositionTop animated:NO];
     }
+    
+    //Setup toolbar style
+    [self.navigationController setToolbarHidden:NO animated:NO];
+    [self setupToolBarStyle];
+    [self setUpToolbarItems];
 }
 
 - (void)viewWillDisappear:(BOOL)animated
@@ -177,6 +185,14 @@ static CGSize CGSizeScale(CGSize size, CGFloat scale) {
 
 - (IBAction)done:(id)sender
 {
+    if (self.imagePickerController.selectedAssets.count == 0) {
+        if ([self.imagePickerController.delegate respondsToSelector:@selector(qb_imagePickerControllerDidCancel:)]) {
+            [self.imagePickerController.delegate qb_imagePickerControllerDidCancel:self.imagePickerController];
+        }
+        
+        return;
+    }
+    
     if ([self.imagePickerController.delegate respondsToSelector:@selector(qb_imagePickerController:didFinishPickingAssets:)]) {
         [self.imagePickerController.delegate qb_imagePickerController:self.imagePickerController
                                                didFinishPickingAssets:self.imagePickerController.selectedAssets.array];
@@ -188,18 +204,106 @@ static CGSize CGSizeScale(CGSize size, CGFloat scale) {
 
 - (void)setUpToolbarItems
 {
-    // Space
-    UIBarButtonItem *leftSpace = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemFlexibleSpace target:nil action:NULL];
-    UIBarButtonItem *rightSpace = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemFlexibleSpace target:nil action:NULL];
+    UIToolbar *toolbar = self.navigationController.toolbar;
     
-    // Info label
-    NSDictionary *attributes = @{ NSForegroundColorAttributeName: [UIColor blackColor] };
-    UIBarButtonItem *infoButtonItem = [[UIBarButtonItem alloc] initWithTitle:@"" style:UIBarButtonItemStylePlain target:nil action:NULL];
-    infoButtonItem.enabled = NO;
-    [infoButtonItem setTitleTextAttributes:attributes forState:UIControlStateNormal];
-    [infoButtonItem setTitleTextAttributes:attributes forState:UIControlStateDisabled];
+    CGSize buttonSize = CGSizeMake(toolbar.frame.size.width/2, toolbar.frame.size.height);
     
-    self.toolbarItems = @[leftSpace, infoButtonItem, rightSpace];
+    UIButton *templateButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    templateButton.frame = CGRectMake(0, 0, buttonSize.width, buttonSize.height);
+    [templateButton setTitle:@"Select All" forState:UIControlStateNormal];
+    [templateButton addTarget:self action:@selector(selectAllAssets) forControlEvents:UIControlEventTouchUpInside];
+    UIBarButtonItem *selectAllButton = [[UIBarButtonItem alloc] initWithCustomView:templateButton];
+    
+    templateButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    templateButton.frame = CGRectMake(buttonSize.width, 0, buttonSize.width, buttonSize.height);
+    [templateButton setTitle:@"Deselect All" forState:UIControlStateNormal];
+    [templateButton addTarget:self action:@selector(deselectAllAssets) forControlEvents:UIControlEventTouchUpInside];
+    UIBarButtonItem *deselectAllButton = [[UIBarButtonItem alloc] initWithCustomView:templateButton];
+    
+    UIBarButtonItem *negativeSeparator = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemFixedSpace target:nil action:nil];
+    negativeSeparator.width = -16;
+    
+    self.toolbarItems = @[negativeSeparator, selectAllButton, negativeSeparator, deselectAllButton];
+    [toolbar setItems:self.toolbarItems];
+}
+
+- (void)setupToolBarStyle
+{
+    UIToolbar *toolbar = self.navigationController.toolbar;
+    toolbar.barStyle = self.imagePickerController.toolbarStyle;
+    toolbar.tintColor = self.imagePickerController.toolbarTintColor;
+    toolbar.barTintColor = self.imagePickerController.toolbarBarTintColor;
+    
+    [toolbar setBackgroundImage:self.imagePickerController.toolbarBackgroundImage
+             forToolbarPosition:UIToolbarPositionAny
+                     barMetrics:UIBarMetricsDefault];
+    
+    [toolbar setBackgroundImage:self.imagePickerController.toolbarBackgroundImage
+             forToolbarPosition:UIToolbarPositionAny
+                     barMetrics:UIBarMetricsCompact];
+}
+
+#pragma mark - Toolbar Action
+
+- (void)selectAllAssets
+{
+    if (!self.imagePickerController.allowsMultipleSelection) {
+        return;
+    }
+    
+    QBImagePickerController *imagePickerController = self.imagePickerController;
+    NSMutableOrderedSet *selectedAssets = imagePickerController.selectedAssets;
+    
+    if (selectedAssets.count >= imagePickerController.maximumNumberOfSelection) {
+        return;
+    }
+    
+    NSUInteger max = (self.fetchResult.count > 0) ? self.fetchResult.count - 1 : 0;
+    
+    for (NSUInteger i = max; i > 0; i--) {
+        NSIndexPath *indexPath = [NSIndexPath indexPathForItem:i inSection:0];
+        
+        PHAsset *asset = self.fetchResult[indexPath.item];
+        if ([selectedAssets indexOfObject:asset] != NSNotFound) {
+            //If this asset was selected then continue next
+            continue;
+        }
+        
+        [self.collectionView selectItemAtIndexPath:indexPath animated:NO scrollPosition:UICollectionViewScrollPositionNone];
+        
+        [selectedAssets addObject:asset];
+        self.lastSelectedItemIndexPath = indexPath;
+        
+        if (imagePickerController.selectedAssets.count >= imagePickerController.maximumNumberOfSelection) {
+            if ([self.imagePickerController.delegate respondsToSelector:@selector(qb_imagePickerMaximumSelectionLimitReached:)]) {
+                [self.imagePickerController.delegate qb_imagePickerMaximumSelectionLimitReached:self.imagePickerController];
+            }
+            
+            break;
+        }
+    }
+    
+    [self updateDoneButtonState];
+}
+
+- (void)deselectAllAssets
+{
+    if (!self.imagePickerController.allowsMultipleSelection) {
+        return;
+    }
+    
+    QBImagePickerController *imagePickerController = self.imagePickerController;
+    NSMutableOrderedSet *selectedAssets = imagePickerController.selectedAssets;
+    
+    for (PHAsset *asset in selectedAssets) {
+        NSInteger index = [self.fetchResult indexOfObject:asset];
+        NSIndexPath *indexPath = [NSIndexPath indexPathForItem:index inSection:0];
+        
+        [self.collectionView deselectItemAtIndexPath:indexPath animated:NO];
+    }
+    
+    [selectedAssets removeAllObjects];
+    self.lastSelectedItemIndexPath = nil;
 }
 
 - (void)updateSelectionInfo
@@ -590,11 +694,11 @@ static CGSize CGSizeScale(CGSize size, CGFloat scale) {
         [self updateDoneButtonState];
         
         if (imagePickerController.showsNumberOfSelectedAssets) {
-            [self updateSelectionInfo];
+//            [self updateSelectionInfo];
             
             if (selectedAssets.count == 1) {
                 // Show toolbar
-                [self.navigationController setToolbarHidden:NO animated:YES];
+//                [self.navigationController setToolbarHidden:NO animated:YES];
             }
         }
     } else {
@@ -627,11 +731,11 @@ static CGSize CGSizeScale(CGSize size, CGFloat scale) {
     [self updateDoneButtonState];
     
     if (imagePickerController.showsNumberOfSelectedAssets) {
-        [self updateSelectionInfo];
+//        [self updateSelectionInfo];
         
         if (selectedAssets.count == 0) {
             // Hide toolbar
-            [self.navigationController setToolbarHidden:YES animated:YES];
+//            [self.navigationController setToolbarHidden:YES animated:YES];
         }
     }
     

@@ -16,6 +16,7 @@
 @optional
 - (void)qb_imagePickerController:(QBImagePickerController *)imagePickerController didFinishPickingAssets:(NSArray *)assets;
 - (void)qb_imagePickerControllerDidCancel:(QBImagePickerController *)imagePickerController;
+- (void)qb_imagePickerMaximumSelectionLimitReached:(QBImagePickerController *)imagePickerController;
 
 - (BOOL)qb_imagePickerController:(QBImagePickerController *)imagePickerController shouldSelectAsset:(PHAsset *)asset;
 - (void)qb_imagePickerController:(QBImagePickerController *)imagePickerController didSelectAsset:(PHAsset *)asset;
@@ -47,5 +48,14 @@ typedef NS_ENUM(NSUInteger, QBImagePickerMediaType) {
 
 @property (nonatomic, assign) NSUInteger numberOfColumnsInPortrait;
 @property (nonatomic, assign) NSUInteger numberOfColumnsInLandscape;
+
+/**
+ * Customize toolbar appearance
+ */
+@property (nonatomic, assign) BOOL enableToolbar;
+@property (nonatomic, strong) UIColor *toolbarTintColor;
+@property (nonatomic, strong) UIColor *toolbarBarTintColor;
+@property (nonatomic, strong) UIImage *toolbarBackgroundImage;
+@property (nonatomic, assign) UIBarStyle toolbarStyle;
 
 @end

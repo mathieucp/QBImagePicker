@@ -16,7 +16,7 @@
     
     // Set default values
     self.borderWidth = 1.0;
-    self.checkmarkLineWidth = 1.2;
+    self.checkmarkLineWidth = 1.4;
     
     self.borderColor = [UIColor whiteColor];
     self.bodyColor = [UIColor colorWithRed:(20.0 / 255.0) green:(111.0 / 255.0) blue:(223.0 / 255.0) alpha:1.0];
@@ -32,12 +32,12 @@
 - (void)drawRect:(CGRect)rect
 {
     // Border
-    [self.borderColor setFill];
-    [[UIBezierPath bezierPathWithOvalInRect:self.bounds] fill];
+//    [self.borderColor setFill];
+//    [[UIBezierPath bezierPathWithOvalInRect:self.bounds] fill];
     
     // Body
-    [self.bodyColor setFill];
-    [[UIBezierPath bezierPathWithOvalInRect:CGRectInset(self.bounds, self.borderWidth, self.borderWidth)] fill];
+//    [self.bodyColor setFill];
+//    [[UIBezierPath bezierPathWithOvalInRect:CGRectInset(self.bounds, self.borderWidth, self.borderWidth)] fill];
     
     // Checkmark
     UIBezierPath *checkmarkPath = [UIBezierPath bezierPath];
